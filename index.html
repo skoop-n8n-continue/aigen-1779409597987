@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sizzle & Buns Menu Board</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* CSS Variables set by JS from data.json */
+    :root {
+      /* Base values will be applied from data.json, do not hardcode defaults here */
+    }
+
+    /* Font imports */
+    @import url('https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow: hidden;
+      background-color: #10181f; /* Fallback */
+    }
+
+    .font-title {
+      font-family: 'Cabinet Grotesk', sans-serif;
+    }
+
+    .font-mono {
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    /* Seamless hidden to loaded state to prevent flash of unstyled content on signage */
+    #app-container {
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out, filter 0.8s ease-in-out;
+    }
+    #app-container.loaded {
+      opacity: 1;
+    }
+
+    /* Shimmer animation for specials */
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .shimmer-bg {
+      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 4s infinite linear;
+    }
+
+    /* Glowing border animation for combos in Lunch Rush */
+    @keyframes goldGlow {
+      0%, 100% { box-shadow: 0 0 5px rgba(250, 204, 21, 0.2), inset 0 0 5px rgba(250, 204, 21, 0.1); border-color: rgba(250, 204, 21, 0.4); }
+      50% { box-shadow: 0 0 20px rgba(250, 204, 21, 0.6), inset 0 0 10px rgba(250, 204, 21, 0.3); border-color: rgba(250, 204, 21, 0.8); }
+    }
+    .lunch-rush-glow {
+      animation: goldGlow 2s infinite ease-in-out;
+    }
+
+    /* Late night neon ambient pulse */
+    @keyframes neonPulse {
+      0%, 100% { text-shadow: 0 0 5px rgba(0, 183, 175, 0.5), 0 0 10px rgba(0, 183, 175, 0.3); }
+      50% { text-shadow: 0 0 15px rgba(0, 183, 175, 0.8), 0 0 25px rgba(0, 183, 175, 0.5); }
+    }
+    .neon-text-pulse {
+      animation: neonPulse 3s infinite ease-in-out;
+    }
+
+    /* Flip animation for layout updates */
+    .fade-item {
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Custom Scrollbar for scrolling elements (if any) */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+<body class="text-white select-none">
+
+  <!-- Simulation Control Panel (Discreet, at top) -->
+  <div id="simulation-panel" class="bg-slate-900 border-b border-slate-800 text-xs py-2 px-4 flex flex-wrap justify-between items-center gap-3 relative z-50">
+    <div class="flex items-center gap-2">
+      <span class="font-bold uppercase tracking-wider text-teal-400 flex items-center gap-1">
+        <i data-lucide="sliders" class="w-3 h-3"></i> Display Admin Tool
+      </span>
+      <span class="text-slate-400">|</span>
+      <span class="text-slate-300">Test how the signage screen responds to different times of day:</span>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2">
+        <label for="force-mode" class="text-slate-400">Active Mode:</label>
+        <select id="force-mode" class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white focus:outline-none focus:border-teal-400 cursor-pointer">
+          <option value="auto">⏱️ Automatic (Time-Based)</option>
+          <option value="normal">🍔 Normal Menu</option>
+          <option value="lunch_rush">☀️ Lunch Rush (11am - 2pm)</option>
+          <option value="late_night">🌙 Late Night (After 9pm)</option>
+        </select>
+      </div>
+
+      <div id="sim-time-container" class="flex items-center gap-2">
+        <label for="sim-hour" class="text-slate-400">Simulate Time:</label>
+        <input type="range" id="sim-hour" min="0" max="23" value="12" class="w-24 accent-teal-400 cursor-pointer">
+        <span id="sim-time-label" class="font-mono bg-slate-800 px-2 py-0.5 rounded text-teal-300">12:00</span>
+      </div>
+
+      <button id="hide-panel-btn" class="text-slate-400 hover:text-white transition" title="Minimize Control Panel">
+        <i data-lucide="x-circle" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Re-open simulation tab -->
+  <button id="show-panel-btn" class="fixed top-2 right-4 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white text-[10px] px-2 py-1 rounded shadow-lg z-40 flex items-center gap-1 transition hidden opacity-50 hover:opacity-100">
+    <i data-lucide="sliders" class="w-3 h-3 text-teal-400"></i> Admin Panel
+  </button>
+
+  <!-- Fullscreen Main Display App Container -->
+  <div id="app-container" class="min-h-screen flex flex-col justify-between p-6 select-none bg-cover bg-center">
+
+    <!-- Top Signage Header -->
+    <header class="flex justify-between items-center bg-slate-950/70 backdrop-blur-md rounded-2xl p-5 border border-white/5 shadow-2xl transition duration-500">
+      <div class="flex items-center gap-5">
+        <div class="bg-white/5 p-2 rounded-xl border border-white/10 shadow-inner">
+          <img class="logo h-16 w-16 object-contain" data-bind-src="storefront.logo" alt="Store Logo">
+        </div>
+        <div>
+          <h1 class="store-name font-title text-3xl font-extrabold uppercase tracking-tight text-white" data-bind-text="storefront.store_name"></h1>
+          <p class="tagline text-sm text-slate-300 font-medium tracking-wide flex items-center gap-2 mt-0.5" data-bind-text="storefront.tagline"></p>
+        </div>
+      </div>
+
+      <!-- Live Interactive Signage State & Clock -->
+      <div class="flex items-center gap-4">
+        <!-- Mode Badges -->
+        <div class="flex flex-col items-end gap-1">
+          <!-- Standard Normal Mode Badge -->
+          <div id="badge-normal" class="hidden px-4 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-400 font-bold uppercase text-xs tracking-wider flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full bg-teal-400 animate-pulse"></span> Standard Menu Active
+          </div>
+          <!-- Lunch Rush Mode Badge -->
+          <div id="badge-lunch" class="hidden px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold uppercase text-xs tracking-wider flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full bg-amber-400 animate-ping"></span> Lunch Rush Combos Live
+          </div>
+          <!-- Late Night Mode Badge -->
+          <div id="badge-late" class="hidden px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-bold uppercase text-xs tracking-wider flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full bg-indigo-400"></span> Late Night Dimmed Mode
+          </div>
+          <span id="time-bracket-info" class="text-[10px] text-slate-400 font-mono"></span>
+        </div>
+
+        <div class="h-10 w-[1px] bg-white/10"></div>
+
+        <!-- Dynamic Digital Signage Clock -->
+        <div class="flex flex-col items-start bg-black/30 px-4 py-1.5 rounded-xl border border-white/5">
+          <span id="signage-time" class="font-mono text-2xl font-bold tracking-wider text-teal-400">12:00:00</span>
+          <span id="signage-date" class="text-[10px] font-bold uppercase tracking-widest text-slate-400">FRIDAY, MAY 22</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Board Grid (Dynamic Layouts) -->
+    <main class="grid grid-cols-12 gap-6 my-6 flex-grow items-stretch">
+
+      <!-- LEFT SIDEBAR: Specials & Combos Panel (4/12 columns) -->
+      <section class="col-span-4 flex flex-col gap-6 h-full">
+
+        <!-- Interactive Banner depending on mode -->
+        <div id="specials-header" class="bg-gradient-to-r from-red-600 to-amber-600 rounded-2xl p-5 shadow-lg border border-red-500/20 relative overflow-hidden transition-all duration-500 flex flex-col justify-between min-h-[140px]">
+          <div class="shimmer-bg absolute inset-0"></div>
+          <div class="relative z-10">
+            <span class="bg-black/40 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full tracking-wider text-amber-200">Limited Time Offer</span>
+            <h2 id="specials-title" class="font-title text-3xl font-black uppercase tracking-tight text-white mt-1">Today's Specials</h2>
+            <p id="specials-desc" class="text-xs text-white/80 mt-1">Fresh ingredients, cooked slow, served fast at all locations.</p>
+          </div>
+          <div class="relative z-10 flex items-center gap-1 text-xs font-bold text-amber-300 mt-2">
+            <i data-lucide="sparkles" class="w-4 h-4 animate-spin" style="animation-duration: 6s;"></i> Ask your cashier for details
+          </div>
+        </div>
+
+        <!-- Sizzlin' Specials Card Container -->
+        <div class="bg-slate-950/55 backdrop-blur-md rounded-3xl p-5 border border-white/5 flex-grow flex flex-col justify-between shadow-2xl relative overflow-hidden">
+          <div class="absolute -right-16 -top-16 w-36 h-36 bg-teal-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div class="flex-grow flex flex-col justify-center">
+            <!-- Dynamic featured item will render here -->
+            <div id="featured-special-container" class="space-y-4">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <!-- Quick Location Info Badge -->
+          <div class="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
+            <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-teal-400"></i> Available at both locations</span>
+            <span class="font-bold text-teal-400 font-mono">HOT & FRESH</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT SIDEBAR: Category Menu Items (8/12 columns) -->
+      <section class="col-span-8 flex flex-col bg-slate-950/45 backdrop-blur-md rounded-3xl p-6 border border-white/5 shadow-2xl">
+
+        <!-- Lunch Rush Special Highlight Banner -->
+        <div id="lunch-rush-banner" class="hidden mb-5 bg-gradient-to-r from-yellow-500/10 via-amber-500/20 to-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 flex items-center justify-between animate-pulse">
+          <div class="flex items-center gap-3">
+            <div class="bg-amber-500 text-slate-950 p-2 rounded-xl">
+              <i data-lucide="zap" class="w-5 h-5 fill-slate-950"></i>
+            </div>
+            <div>
+              <h3 class="font-title uppercase font-black tracking-tight text-yellow-400">Lunch Rush Active! (11AM - 2PM)</h3>
+              <p class="text-xs text-slate-300">Combo deals are unlocked and discounted. Grab 'em while they're hot!</p>
+            </div>
+          </div>
+          <span class="font-mono bg-black/40 text-yellow-400 font-extrabold px-3 py-1 rounded-lg border border-yellow-500/20 text-sm">SAVE UP TO $2.50</span>
+        </div>
+
+        <!-- Late Night Sleep Mode Banner -->
+        <div id="late-night-banner" class="hidden mb-5 bg-gradient-to-r from-indigo-950/80 to-purple-950/80 border border-indigo-500/30 rounded-2xl p-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="bg-indigo-600 text-white p-2 rounded-xl shadow-lg shadow-indigo-500/20">
+              <i data-lucide="moon" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="font-title uppercase font-black tracking-tight text-indigo-300">Late Night Mode Enabled</h3>
+              <p class="text-xs text-indigo-200/80">Only our shortened chef-curated late-night selection is currently available.</p>
+            </div>
+          </div>
+          <span class="font-mono bg-black/40 text-indigo-400 font-extrabold px-3 py-1 rounded-lg border border-indigo-500/20 text-sm">DIMMED SCREEN</span>
+        </div>
+
+        <!-- Category Section Tabs (Informational for Menu Board) -->
+        <div id="menu-categories-tabs" class="flex gap-2 mb-5">
+          <!-- Dynamic category tabs will render here -->
+        </div>
+
+        <!-- Products Grid -->
+        <div id="menu-items-grid" class="grid grid-cols-2 gap-5 flex-grow overflow-y-auto pr-1">
+          <!-- Dynamic products render here -->
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Signage Footer (Locations, Address, Phone, Interactive Skoop Brand) -->
+    <footer class="bg-slate-950/70 backdrop-blur-md rounded-2xl p-5 border border-white/5 shadow-2xl flex justify-between items-center gap-6">
+
+      <!-- Location 1 -->
+      <div class="flex items-start gap-3 flex-1 border-r border-white/10 pr-4">
+        <div class="bg-teal-500/10 p-2 rounded-xl border border-teal-500/20 mt-0.5">
+          <i data-lucide="map-pin" class="w-5 h-5 text-teal-400"></i>
+        </div>
+        <div>
+          <h4 id="loc-1-name" class="font-bold text-sm uppercase text-white tracking-wide" data-bind-text="locations.0.name">Downtown Sizzle</h4>
+          <p id="loc-1-address" class="text-xs text-slate-300 mt-0.5" data-bind-text="locations.0.address">101 Grill Master Ave, Downtown</p>
+          <div class="flex gap-4 mt-1 text-[10px] font-mono text-slate-400">
+            <span id="loc-1-hours" class="flex items-center gap-1" data-bind-text="locations.0.hours"><i data-lucide="clock" class="w-3 h-3 text-teal-500"></i> 11 AM - 11 PM</span>
+            <span id="loc-1-phone" class="flex items-center gap-1" data-bind-text="locations.0.phone"><i data-lucide="phone" class="w-3 h-3 text-teal-500"></i> 555-0192</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Location 2 -->
+      <div class="flex items-start gap-3 flex-1 border-r border-white/10 pr-4">
+        <div class="bg-teal-500/10 p-2 rounded-xl border border-teal-500/20 mt-0.5">
+          <i data-lucide="map-pin" class="w-5 h-5 text-teal-400"></i>
+        </div>
+        <div>
+          <h4 id="loc-2-name" class="font-bold text-sm uppercase text-white tracking-wide" data-bind-text="locations.1.name">Suburban Buns</h4>
+          <p id="loc-2-address" class="text-xs text-slate-300 mt-0.5" data-bind-text="locations.1.address">404 Fryer Way, Westside</p>
+          <div class="flex gap-4 mt-1 text-[10px] font-mono text-slate-400">
+            <span id="loc-2-hours" class="flex items-center gap-1" data-bind-text="locations.1.hours"><i data-lucide="clock" class="w-3 h-3 text-teal-500"></i> 11 AM - Midnight</span>
+            <span id="loc-2-phone" class="flex items-center gap-1" data-bind-text="locations.1.phone"><i data-lucide="phone" class="w-3 h-3 text-teal-500"></i> 555-0144</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chain Info & Skoop Platform Branding -->
+      <div class="flex flex-col items-end text-right min-w-[150px]">
+        <span class="text-xs font-bold text-slate-400 tracking-wider">SKOOP SIGNAGE NETWORK</span>
+        <span class="text-[10px] text-teal-400/80 font-mono mt-0.5 flex items-center gap-1">
+          <span class="h-1.5 w-1.5 bg-green-500 rounded-full animate-ping"></span> Live & Synced Node
+        </span>
+        <span class="text-[9px] text-slate-500 mt-1">Skoop Agent Powered Board</span>
+      </div>
+
+    </footer>
+
+  </div>
+
+  <!-- Main JavaScript App Logic -->
+  <script>
+    // State Variables
+    let appData = null;
+    let currentMode = 'normal'; // 'normal', 'lunch_rush', 'late_night'
+    let simulatedHour = 12; // 0-23
+    let useSystemTime = true;
+
+    // Fetch and parse data.json
+    async function loadAppData() {
+      try {
+        const response = await fetch('data.json');
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Failed to load app data:', error);
+        return null;
+      }
+    }
+
+    // Convert hh:mm string to minutes from midnight
+    function timeStringToMinutes(timeStr) {
+      if (!timeStr) return 0;
+      const parts = timeStr.split(':');
+      const hours = parseInt(parts[0], 10) || 0;
+      const minutes = parseInt(parts[1], 10) || 0;
+      return hours * 60 + minutes;
+    }
+
+    // Update the signage clock and calculate time mode
+    function updateClockAndTime() {
+      const now = new Date();
+
+      // Update Date Display
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const dayName = days[now.getDay()].toUpperCase();
+      const monthName = months[now.getMonth()].toUpperCase();
+      const dateNum = now.getDate();
+
+      document.getElementById('signage-date').textContent = `${dayName}, ${monthName} ${dateNum}`;
+
+      // Calculate time to show
+      let currentHours, currentMinutes, currentSeconds;
+
+      if (useSystemTime) {
+        currentHours = now.getHours();
+        currentMinutes = now.getMinutes();
+        currentSeconds = now.getSeconds();
+        // Keep the range slider in sync
+        document.getElementById('sim-hour').value = currentHours;
+        document.getElementById('sim-time-label').textContent = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
+      } else {
+        currentHours = simulatedHour;
+        currentMinutes = 0;
+        currentSeconds = 0;
+      }
+
+      // Format time string
+      const timeStr = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}:${String(currentSeconds).padStart(2, '0')}`;
+      document.getElementById('signage-time').textContent = timeStr;
+
+      // Decide Active Menu Mode
+      evaluateActiveMode(currentHours, currentMinutes);
+    }
+
+    // Evaluate current mode based on simulated or system time
+    function evaluateActiveMode(hours, minutes) {
+      if (!appData) return;
+
+      const forcedMode = document.getElementById('force-mode').value;
+      if (forcedMode !== 'auto') {
+        setMenuMode(forcedMode);
+        return;
+      }
+
+      // Auto Calculations
+      const settings = appData.sections.app_settings;
+      const currentMin = hours * 60 + minutes;
+
+      const lunchStart = timeStringToMinutes(settings.lunch_rush_start.value);
+      const lunchEnd = timeStringToMinutes(settings.lunch_rush_end.value);
+      const lateStart = timeStringToMinutes(settings.late_night_start.value);
+      const lateEnd = timeStringToMinutes(settings.late_night_end.value);
+
+      let detectedMode = 'normal';
+
+      // Check Late Night (handles wrapping past midnight e.g. 21:00 to 04:00)
+      if (lateStart > lateEnd) {
+        // Over midnight (e.g. 21:00 -> 04:00)
+        if (currentMin >= lateStart || currentMin < lateEnd) {
+          detectedMode = 'late_night';
+        }
+      } else {
+        // Same day (e.g. 21:00 -> 23:59)
+        if (currentMin >= lateStart && currentMin < lateEnd) {
+          detectedMode = 'late_night';
+        }
+      }
+
+      // Check Lunch Rush (only if not late night)
+      if (detectedMode !== 'late_night') {
+        if (currentMin >= lunchStart && currentMin < lunchEnd) {
+          detectedMode = 'lunch_rush';
+        }
+      }
+
+      setMenuMode(detectedMode);
+    }
+
+    // Trigger visual transformations on mode change
+    function setMenuMode(mode) {
+      if (currentMode === mode) return; // No redundant layout renders
+
+      currentMode = mode;
+
+      const appContainer = document.getElementById('app-container');
+      const badgeNormal = document.getElementById('badge-normal');
+      const badgeLunch = document.getElementById('badge-lunch');
+      const badgeLate = document.getElementById('badge-late');
+
+      const specialsHeader = document.getElementById('specials-header');
+      const specialsTitle = document.getElementById('specials-title');
+      const specialsDesc = document.getElementById('specials-desc');
+
+      const lunchRushBanner = document.getElementById('lunch-rush-banner');
+      const lateNightBanner = document.getElementById('late-night-banner');
+
+      // Reset all classes
+      badgeNormal.classList.add('hidden');
+      badgeLunch.classList.add('hidden');
+      badgeLate.classList.add('hidden');
+      lunchRushBanner.classList.add('hidden');
+      lateNightBanner.classList.add('hidden');
+
+      // Reset special theme backgrounds
+      specialsHeader.className = "bg-gradient-to-r rounded-2xl p-5 shadow-lg border relative overflow-hidden transition-all duration-500 flex flex-col justify-between min-h-[140px]";
+      appContainer.style.filter = "brightness(100%) contrast(100%)";
+
+      // Apply mode styles
+      if (mode === 'normal') {
+        badgeNormal.classList.remove('hidden');
+        specialsTitle.textContent = "Today's Specials";
+        specialsDesc.textContent = "Flame-grilled to order. Fresh ingredients, incredible prices.";
+        specialsHeader.classList.add('from-teal-600', 'to-emerald-600', 'border-teal-500/20');
+
+        // Populate menu items
+        renderMenuItems();
+      }
+      else if (mode === 'lunch_rush') {
+        badgeLunch.classList.remove('hidden');
+        lunchRushBanner.classList.remove('hidden');
+        specialsTitle.textContent = "Lunch Specials";
+        specialsDesc.textContent = "Unlocking special burger combos & sizzling deals from 11am to 2pm!";
+        specialsHeader.classList.add('from-amber-500', 'to-red-500', 'border-amber-400/30', 'shadow-yellow-500/10');
+
+        renderMenuItems();
+      }
+      else if (mode === 'late_night') {
+        badgeLate.classList.remove('hidden');
+        lateNightBanner.classList.remove('hidden');
+        specialsTitle.textContent = "Late Night Bites";
+        specialsDesc.textContent = "Dimmed atmosphere, big sizzle. Savor our limited late night snacks.";
+        specialsHeader.classList.add('from-indigo-900', 'to-purple-900', 'border-indigo-500/20');
+
+        // Dim display setting from data.json
+        const dimValue = appData.sections.app_settings.late_night_dimming.value; // e.g. 40% dimming
+        const brightnessPct = 100 - dimValue;
+        appContainer.style.filter = `brightness(${brightnessPct}%) contrast(105%)`;
+
+        renderMenuItems();
+      }
+
+      // Re-initialize icons
+      lucide.createIcons();
+    }
+
+    // Render Menu Categories and Products Dynamically
+    function renderMenuItems() {
+      if (!appData) return;
+
+      const categories = appData.sections.categories.value;
+      const allProducts = appData.sections.products.value;
+      const categoriesTabs = document.getElementById('menu-categories-tabs');
+      const productsGrid = document.getElementById('menu-items-grid');
+      const featuredContainer = document.getElementById('featured-special-container');
+
+      // 1. Clear contents
+      categoriesTabs.innerHTML = '';
+      productsGrid.innerHTML = '';
+      featuredContainer.innerHTML = '';
+
+      // Set category headers in tabs area
+      categories.forEach((cat, catIdx) => {
+        // Only show category tab if there are products available in it for current mode
+        const hasProducts = allProducts.some(p => {
+          if (p.category !== cat.id) return false;
+          if (currentMode === 'late_night' && !p.is_late_night_menu) return false;
+          return true;
+        });
+
+        if (!hasProducts) return;
+
+        const tab = document.createElement('div');
+        tab.className = "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border border-white/5 bg-white/5 text-slate-300 flex items-center gap-2";
+        tab.setAttribute('data-bind-text', `categories.${catIdx}.name`);
+        tab.textContent = cat.name;
+        categoriesTabs.appendChild(tab);
+      });
+
+      // 2. Render Products Grid and Filter based on Mode
+      let featuredProduct = null;
+
+      // Filter products based on mode
+      const displayProducts = allProducts.map((p, idx) => ({ ...p, _idx: idx }));
+
+      displayProducts.forEach(p => {
+        const idx = p._idx;
+
+        // Late night check
+        if (currentMode === 'late_night' && !p.is_late_night_menu) {
+          return; // Skip non-late-night items
+        }
+
+        // Determine if this should be featured on the left panel
+        // In Lunch Rush, we feature the Lunch Combo exclusive!
+        // In normal mode or late-night, we feature the first item marked as a daily special.
+        if (currentMode === 'lunch_rush') {
+          if (p.is_lunch_combo) {
+            featuredProduct = p;
+          }
+        } else {
+          if (p.is_daily_special && !featuredProduct) {
+            featuredProduct = p;
+          }
+        }
+
+        // Create standard grid item card
+        const card = document.createElement('div');
+        card.className = "fade-item bg-slate-900/60 border border-white/5 p-4 rounded-2xl flex gap-4 items-center hover:scale-[1.02] transition shadow-lg relative overflow-hidden";
+
+        // Special highlighting tags
+        let tagHtml = '';
+        let borderClass = '';
+
+        if (currentMode === 'lunch_rush' && p.is_lunch_combo) {
+          tagHtml = `<span class="absolute top-2 right-2 bg-yellow-500 text-slate-950 font-extrabold text-[9px] uppercase px-2 py-0.5 rounded-md shadow flex items-center gap-1"><i data-lucide="zap" class="w-2.5 h-2.5 fill-slate-950"></i> Combo</span>`;
+          card.classList.add('lunch-rush-glow');
+        } else if (p.is_daily_special) {
+          tagHtml = `<span class="absolute top-2 right-2 bg-teal-500 text-white font-extrabold text-[9px] uppercase px-2 py-0.5 rounded-md shadow">Special Offer</span>`;
+        }
+
+        const priceToShow = (p.is_daily_special && currentMode !== 'late_night') ? p.special_price : p.price;
+        const originalPriceHtml = (p.is_daily_special && currentMode !== 'late_night') ? `<span class="text-xs line-through text-slate-500 font-medium">$${p.price.toFixed(2)}</span>` : '';
+
+        card.innerHTML = `
+          ${tagHtml}
+          <div class="h-20 w-20 flex-shrink-0 bg-black/20 rounded-xl overflow-hidden border border-white/5 flex items-center justify-center p-1">
+            <img class="h-full w-full object-contain" data-bind-src="products.${idx}.thumbnail" src="${p.thumbnail}" alt="${p.name}">
+          </div>
+          <div class="flex-grow flex flex-col justify-between h-full min-w-0">
+            <div>
+              <h3 class="font-bold text-sm uppercase text-white tracking-wide truncate" data-bind-text="products.${idx}.name">${p.name}</h3>
+              <p class="text-[11px] text-slate-400 mt-0.5 leading-normal line-clamp-2" data-bind-text="products.${idx}.description">${p.description}</p>
+            </div>
+            <div class="flex items-center gap-2 mt-2">
+              <span class="font-mono text-sm font-extrabold text-teal-400" data-bind-currency="products.${idx}.price">$${priceToShow.toFixed(2)}</span>
+              ${originalPriceHtml}
+            </div>
+          </div>
+        `;
+        productsGrid.appendChild(card);
+      });
+
+      // If no featured product found, use first item
+      if (!featuredProduct && displayProducts.length > 0) {
+        featuredProduct = displayProducts[0];
+      }
+
+      // 3. Render Featured Special on Left Side
+      if (featuredProduct) {
+        const idx = featuredProduct._idx;
+        const isCombo = featuredProduct.is_lunch_combo;
+        const price = (featuredProduct.is_daily_special && currentMode !== 'late_night') ? featuredProduct.special_price : featuredProduct.price;
+        const originalPrice = featuredProduct.price;
+
+        let badgeText = "Today's Special Deal";
+        let badgeBg = "bg-teal-500";
+        let titleColor = "text-teal-400";
+
+        if (currentMode === 'lunch_rush' && isCombo) {
+          badgeText = "Lunch Rush Special";
+          badgeBg = "bg-amber-500 text-slate-900";
+          titleColor = "text-amber-400";
+        }
+
+        featuredContainer.innerHTML = `
+          <div class="flex flex-col items-center text-center">
+            <div class="inline-flex ${badgeBg} font-extrabold uppercase text-[10px] px-3 py-1 rounded-full tracking-wider mb-3 shadow">
+              ${badgeText}
+            </div>
+
+            <div class="h-44 w-44 bg-black/10 rounded-3xl p-3 border border-white/5 shadow-inner flex items-center justify-center mb-4 hover:scale-105 transition duration-300">
+              <img class="h-full w-full object-contain" data-bind-src="products.${idx}.thumbnail" src="${featuredProduct.thumbnail}" alt="${featuredProduct.name}">
+            </div>
+
+            <h3 class="font-title text-xl uppercase font-extrabold ${titleColor} tracking-tight leading-none" data-bind-text="products.${idx}.name">
+              ${featuredProduct.name}
+            </h3>
+
+            <p class="text-xs text-slate-300 max-w-xs mt-2 leading-relaxed" data-bind-text="products.${idx}.description">
+              ${featuredProduct.description}
+            </p>
+
+            <div class="flex items-baseline justify-center gap-2 mt-4">
+              <span class="text-xs text-slate-400 uppercase tracking-widest font-bold">Only</span>
+              <span class="font-mono text-3xl font-black text-white" data-bind-currency="products.${idx}.price">
+                $${price.toFixed(2)}
+              </span>
+              ${(featuredProduct.is_daily_special && currentMode !== 'late_night') ? `<span class="font-mono text-sm line-through text-slate-500">$${originalPrice.toFixed(2)}</span>` : ''}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Apply Brand Color Variables from data.json
+    function applyBrandStyles(data) {
+      if (!data) return;
+      const settings = data.sections.app_settings;
+
+      // Document styles from colors defined in data.json
+      document.documentElement.style.setProperty('--primary-color', settings.primary_color.value);
+      document.documentElement.style.setProperty('--secondary-color', settings.secondary_color.value);
+      document.documentElement.style.setProperty('--background-color', settings.background_color.value);
+      document.documentElement.style.setProperty('--text-color', settings.text_color.value);
+
+      // Apply primary branding colors to some specific styles dynamically
+      document.body.style.backgroundColor = settings.background_color.value;
+      document.body.style.color = settings.text_color.value;
+
+      // Update dynamic elements color
+      const tealTexts = document.querySelectorAll('.text-teal-400');
+      tealTexts.forEach(el => el.style.color = settings.primary_color.value);
+
+      const tealBorders = document.querySelectorAll('.border-teal-500\\/20');
+      tealBorders.forEach(el => el.style.borderColor = `${settings.primary_color.value}33`);
+
+      // Update time display details
+      const rushStart = settings.lunch_rush_start.value;
+      const rushEnd = settings.lunch_rush_end.value;
+      const lateStart = settings.late_night_start.value;
+
+      document.getElementById('time-bracket-info').textContent =
+        `Lunch: ${rushStart}-${rushEnd} | Late Night: After ${lateStart}`;
+    }
+
+    // Initial Loading
+    async function init() {
+      // Load data
+      appData = await loadAppData();
+      if (!appData) return;
+
+      // Apply styles
+      applyBrandStyles(appData);
+
+      // Initial render & Clock Start
+      updateClockAndTime();
+      setInterval(updateClockAndTime, 1000);
+
+      // Initial grid rendering
+      renderMenuItems();
+
+      // Show application once fully rendering to avoid flashes of black
+      setTimeout(() => {
+        document.getElementById('app-container').classList.add('loaded');
+        lucide.createIcons();
+      }, 100);
+    }
+
+    // Interactive Admin Panel Simulation Setup
+    document.getElementById('force-mode').addEventListener('change', () => {
+      updateClockAndTime();
+    });
+
+    document.getElementById('sim-hour').addEventListener('input', (e) => {
+      simulatedHour = parseInt(e.target.value, 10);
+      useSystemTime = false;
+      document.getElementById('sim-time-label').textContent = `${String(simulatedHour).padStart(2, '0')}:00`;
+      updateClockAndTime();
+    });
+
+    document.getElementById('hide-panel-btn').addEventListener('click', () => {
+      document.getElementById('simulation-panel').classList.add('hidden');
+      document.getElementById('show-panel-btn').classList.remove('hidden');
+    });
+
+    document.getElementById('show-panel-btn').addEventListener('click', () => {
+      document.getElementById('simulation-panel').classList.remove('hidden');
+      document.getElementById('show-panel-btn').classList.add('hidden');
+    });
+
+    // Start App
+    init();
+
+  </script>
+</body>
+</html>

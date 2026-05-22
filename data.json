@@ -1,0 +1,214 @@
+{
+  "app_id": "aigen-1779409597987",
+  "document_version": 1,
+  "sections": {
+    "storefront": {
+      "store_name": {
+        "type": "text",
+        "label": "Store Name",
+        "value": "Sizzle & Buns"
+      },
+      "tagline": {
+        "type": "text",
+        "label": "Tagline",
+        "value": "Flame-Grilled Burgers & Legendary Fries"
+      },
+      "logo": {
+        "type": "file",
+        "label": "Store Logo",
+        "value": "assets/logo_s8u2b4.png",
+        "meta": {
+          "accepted_formats": ["png", "jpg", "svg", "webp"],
+          "path": "assets/"
+        }
+      }
+    },
+    "app_settings": {
+      "primary_color": {
+        "type": "color",
+        "label": "Primary Brand Color",
+        "value": "#00b7af"
+      },
+      "secondary_color": {
+        "type": "color",
+        "label": "Secondary Brand Color",
+        "value": "#6a7071"
+      },
+      "background_color": {
+        "type": "color",
+        "label": "Background Color",
+        "value": "#10181f"
+      },
+      "text_color": {
+        "type": "color",
+        "label": "Text Color",
+        "value": "#ffffff"
+      },
+      "lunch_rush_start": {
+        "type": "text",
+        "label": "Lunch Rush Start Time (24h)",
+        "value": "11:00"
+      },
+      "lunch_rush_end": {
+        "type": "text",
+        "label": "Lunch Rush End Time (24h)",
+        "value": "14:00"
+      },
+      "late_night_start": {
+        "type": "text",
+        "label": "Late Night Start Time (24h)",
+        "value": "21:00"
+      },
+      "late_night_end": {
+        "type": "text",
+        "label": "Late Night End Time (24h)",
+        "value": "04:00"
+      },
+      "late_night_dimming": {
+        "type": "number",
+        "label": "Late Night Screen Dimming %",
+        "value": 40,
+        "meta": { "format": "percentage" }
+      },
+      "simulation_enabled": {
+        "type": "boolean",
+        "label": "Time Simulation (Manual Controls)",
+        "value": true
+      },
+      "simulation_mode": {
+        "type": "enum",
+        "label": "Force Display Mode",
+        "value": "auto",
+        "meta": {
+          "options": ["auto", "normal", "lunch_rush", "late_night"]
+        }
+      }
+    },
+    "locations": {
+      "type": "collection",
+      "label": "Store Locations",
+      "item_schema": {
+        "id": { "type": "text", "label": "ID" },
+        "name": { "type": "text", "label": "Location Name" },
+        "address": { "type": "text", "label": "Address" },
+        "hours": { "type": "text", "label": "Opening Hours" },
+        "phone": { "type": "text", "label": "Phone Number" }
+      },
+      "value": [
+        {
+          "id": "loc_downt",
+          "name": "Downtown Sizzle",
+          "address": "101 Grill Master Ave, Downtown",
+          "hours": "11 AM - 11 PM Daily",
+          "phone": "555-0192"
+        },
+        {
+          "id": "loc_subur",
+          "name": "Suburban Buns",
+          "address": "404 Fryer Way, Westside",
+          "hours": "11 AM - Midnight Weekends",
+          "phone": "555-0144"
+        }
+      ]
+    },
+    "categories": {
+      "type": "collection",
+      "label": "Menu Categories",
+      "item_schema": {
+        "id": { "type": "text", "label": "ID" },
+        "name": { "type": "text", "label": "Category Name" },
+        "description": { "type": "textarea", "label": "Category Description" }
+      },
+      "value": [
+        {
+          "id": "cat_burgers",
+          "name": "Sizzlin' Burgers",
+          "description": "Thick & juicy 100% Angus beef patties"
+        },
+        {
+          "id": "cat_sides",
+          "name": "Legendary Sides",
+          "description": "Crisp, loaded, and seasoned to perfection"
+        },
+        {
+          "id": "cat_combos",
+          "name": "Combo Deals",
+          "description": "Complete meals for maximum value"
+        }
+      ]
+    },
+    "products": {
+      "type": "collection",
+      "label": "Menu Items",
+      "item_schema": {
+        "id": { "type": "text", "label": "ID" },
+        "name": { "type": "text", "label": "Product Name" },
+        "price": { "type": "number", "label": "Standard Price", "meta": { "format": "currency" } },
+        "description": { "type": "textarea", "label": "Product Description" },
+        "category": { "type": "linked", "label": "Category", "meta": { "collection": "categories", "display_field": "name" } },
+        "thumbnail": {
+          "type": "file",
+          "label": "Product Image",
+          "meta": {
+            "accepted_formats": ["jpg", "png", "webp"],
+            "path": "assets/products/"
+          }
+        },
+        "is_daily_special": { "type": "boolean", "label": "Daily Special Offer" },
+        "special_price": { "type": "number", "label": "Special Offer Price", "meta": { "format": "currency" } },
+        "is_lunch_combo": { "type": "boolean", "label": "Lunch Combo Exclusive" },
+        "is_late_night_menu": { "type": "boolean", "label": "Available Late Night" }
+      },
+      "value": [
+        {
+          "id": "prod_classic",
+          "name": "Classic Double Cheeseburger",
+          "price": 8.99,
+          "description": "Two flame-grilled beef patties, melted sharp cheddar, ripe tomato, crisp lettuce, house sizzle sauce.",
+          "category": "cat_burgers",
+          "thumbnail": "assets/products/prod_classic_thumb_b8w2y4.png",
+          "is_daily_special": true,
+          "special_price": 7.49,
+          "is_lunch_combo": false,
+          "is_late_night_menu": true
+        },
+        {
+          "id": "prod_spicy",
+          "name": "Sizzlin' Spicy Burger",
+          "price": 9.49,
+          "description": "Spicy seasoned patty, pepper jack cheese, grilled jalapeños, crispy onion strings, chipotle aioli.",
+          "category": "cat_burgers",
+          "thumbnail": "assets/products/prod_spicy_thumb_k8n2f9.png",
+          "is_daily_special": false,
+          "special_price": 9.49,
+          "is_lunch_combo": false,
+          "is_late_night_menu": true
+        },
+        {
+          "id": "prod_loaded",
+          "name": "Loaded Bacon Cheese Fries",
+          "price": 6.49,
+          "description": "Golden-brown crispy french fries smothered in warm cheese sauce, topped with smoked bacon bits and fresh chives.",
+          "category": "cat_sides",
+          "thumbnail": "assets/products/prod_loaded_thumb_p9q4s8.png",
+          "is_daily_special": true,
+          "special_price": 5.49,
+          "is_lunch_combo": false,
+          "is_late_night_menu": true
+        },
+        {
+          "id": "prod_combo",
+          "name": "Ultimate Sizzlin' Combo Deal",
+          "price": 13.99,
+          "description": "Classic Double Cheeseburger, regular loaded fries, and a ice cold beverage of your choice.",
+          "category": "cat_combos",
+          "thumbnail": "assets/products/prod_combo_thumb_f3m8r9.png",
+          "is_daily_special": false,
+          "special_price": 11.49,
+          "is_lunch_combo": true,
+          "is_late_night_menu": false
+        }
+      ]
+    }
+  }
+}
